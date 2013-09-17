@@ -62,6 +62,7 @@ static unsigned int maxinflight = 200; /* maximum # of aios in flight */
 static unsigned int maxsubmit = 20; /* maximum # of aios to submit */
 static unsigned int myruns = 100; /* number of runs */
 static unsigned int opt_verbose = 0; /* verbose */
+static unsigned int opt_csv = 0; /* output csv */
 
 static unsigned int runid; /* # of aios dones */
 static unsigned int copied; /* # of aios dones */
@@ -204,6 +205,7 @@ static struct option long_options[] = {
   {"maxinflight", required_argument, NULL, 'f'},
   {"runs", required_argument, NULL, 'n'},
   {"verbose", no_argument, NULL, 'v'},
+  {"csv", no_argument, NULL, 'C'},
   {NULL, 0, NULL, 0},
 };
 
@@ -211,7 +213,7 @@ int main_getopt(int argc, char **argv)
 {
   int c;
 
-  while ((c = getopt_long(argc, argv, "d:s:wrc:b:f:n:v", long_options, NULL)) != -1)
+  while ((c = getopt_long(argc, argv, "d:s:wrc:b:f:n:vC", long_options, NULL)) != -1)
   {
     switch (c)
     {
@@ -268,6 +270,9 @@ int main_getopt(int argc, char **argv)
           return 1;
         }
         break;
+      case 'C':
+        opt_csv = 1;
+        break;
     }
   }
   return 0;
@@ -276,8 +281,8 @@ int main_getopt(int argc, char **argv)
 int usage(char *s)
 {
   fprintf(stderr, "Usage: %s <--dev=/dev/xxx> [--write] [--random] \
-[--iosize=x (kB)] [--iocount=x] [--runs=x] [--verbose]\
-[--maxsubmit=x] [--maxinflight=x]\n", s);
+[--iosize=x (kB)] [--iocount=x] [--runs=x] [--verbose] \
+[--maxsubmit=x] [--maxinflight=x] [--csv]\n", s);
   return 2;
 }
 
@@ -438,6 +443,23 @@ int main(int argc, char **argv)
     (double)myiosize * stat_iocount / stat_time * 1000 / (1024 * 1024),
     (double)myiosize * stat_iocount / stat_time * 1000 / (1024 * 1024) * 8,
     bw_min, bw_max, sqrt(get_variance(&bw_variance)));
+
+  if (opt_csv)
+  {
+      printf("block_size;read_or_write;seq_or_rand;" \
+        "lat_avg;lat_min;lat_max;lat_dev;" \
+        "bw_avg;bw_min;bw_max;bw_dev;" \
+        "iops_avg;iops_min;iops_max;iops_dev\n");
+      printf("%u;%s;%s;%.3lf;%.3lf;%.3lf;%.3lf;%.3lf;%.3lf;%.3lf;" \
+        "%.3lf;%.3lf;%.3lf;%.3lf;%.3lf\n",
+        myiosize, mode_write ? "write" : "read", mode_rnd ? "rand" : "seq",
+        (double)stat_time / stat_iocount, lat_min, lat_max, sqrt(get_variance(&lat_variance)),
+        (double)myiosize * stat_iocount / stat_time * 1000 / (1024 * 1024), bw_min, bw_max, sqrt(get_variance(&bw_variance)),
+        (double)stat_iocount / stat_time * 1000, iops_min, iops_max, sqrt(get_variance(&iops_variance))
+      );
+
+
+  }
 
   return 0;
 }
